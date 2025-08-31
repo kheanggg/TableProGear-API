@@ -20,22 +20,23 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
-            'price' => 'required|numeric',
+            'price'       => 'required|numeric',
             'category_id' => 'required|exists:categories,category_id',
+            'tag_ids'     => 'array',
         ]);
 
-        $product = Product::create([
-            'name' => $request->name,
-            'description' => $request->description,
-            'price' => $request->price,
-            'category_id' => $request->category_id,
-        ]);
+        $product = Product::create($request->only('name','description','price','category_id'));
+
+        // attach tags if provided
+        if ($request->has('tag_ids')) {
+            $product->tags()->attach($request->tag_ids);
+        }
 
         return response()->json([
             'message' => 'Product created successfully',
-            'product' => $product
+            'product' => $product->load('tags')
         ], 201);
     }
 
@@ -78,17 +79,22 @@ class ProductController extends Controller
         }
 
         $request->validate([
-            'name' => 'sometimes|required|string|max:255',
+            'name'        => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
-            'price' => 'sometimes|required|numeric',
+            'price'       => 'sometimes|required|numeric',
             'category_id' => 'sometimes|required|exists:categories,category_id',
+            'tag_ids'     => 'array',
         ]);
 
-        $product->update($request->all());
+        $product->update($request->only('name','description','price','category_id'));
+
+        if ($request->has('tag_ids')) {
+            $product->tags()->sync($request->tag_ids); // sync tags
+        }
 
         return response()->json([
             'message' => 'Product updated successfully',
-            'product' => $product
+            'product' => $product->load('tags')
         ], 200);
     }
 

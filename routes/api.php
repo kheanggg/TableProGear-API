@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\TagController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -23,6 +24,15 @@ Route::prefix('categories')->group(function () {
     Route::get('/{id}', [CategoryController::class, 'show']);       // Get category by ID
     Route::put('/{id}', [CategoryController::class, 'update']);     // Update category
     Route::delete('/{id}', [CategoryController::class, 'destroy']); // Delete category
+});
+
+// Tag API routes
+Route::prefix('tags')->group(function () {
+    Route::get('/', [TagController::class, 'index']);          // List all categories
+    Route::post('/', [TagController::class, 'store']);         // Create new category
+    Route::get('/{id}', [TagController::class, 'show']);       // Get category by ID
+    Route::put('/{id}', [TagController::class, 'update']);     // Update category
+    Route::delete('/{id}', [TagController::class, 'destroy']); // Delete category
 });
 
 // Product API routes

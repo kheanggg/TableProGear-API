@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('categories', function (Blueprint $table) {
-            $table->smallIncrements('category_id');
+        Schema::create('tags', function (Blueprint $table) {
+            $table->smallIncrements('tag_id');
             $table->string('name');
             $table->string('description')->nullable();
         });
@@ -23,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('categories');
+        Schema::dropIfExists('tags');
     }
 };
