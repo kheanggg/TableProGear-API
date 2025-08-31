@@ -66,14 +66,22 @@ class CategoryController extends Controller
     // DELETE /api/categories/{id}
     public function destroy($id)
     {
-        $category = Category::find($id);
+        $category = Category::with('products')->find($id);
 
         if (!$category) {
             return response()->json(['message' => 'Category not found'], 404);
+        }
+
+        // Check if category has products
+        if ($category->products->count() > 0) {
+            return response()->json([
+                'message' => 'Cannot delete category because it has one or more products'
+            ], 400);
         }
 
         $category->delete();
 
         return response()->json(['message' => 'Category deleted successfully'], 200);
     }
+
 }
