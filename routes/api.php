@@ -44,4 +44,8 @@ Route::prefix('products')->group(function () {
     Route::put('/{id}', [ProductController::class, 'update']);
     Route::patch('/{id}', [ProductController::class, 'update']);
     Route::delete('/{id}', [ProductController::class, 'destroy']);
+
+    // Images
+    Route::post('/{id}/images', [ProductController::class, 'addImage']);
+    Route::delete('/{product_id}/images/{image_id}', [ProductController::class, 'deleteImage']);
 });
