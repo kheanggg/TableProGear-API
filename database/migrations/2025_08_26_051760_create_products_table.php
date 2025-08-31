@@ -18,6 +18,9 @@ return new class extends Migration
             $table->decimal('price', 8, 2);
             $table->unsignedSmallInteger('category_id');
             $table->timestamps();
+
+            $table->boolean('status')->default(true);
+            $table->boolean('in_stock')->default(true);
             
             $table->foreign('category_id')
                 ->references('category_id')
