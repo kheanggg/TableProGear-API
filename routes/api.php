@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Middleware\CheckRole;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -21,6 +22,7 @@ Route::get('/test', function () {
 // Authentication route
 Route::post('/admin/login', [AuthController::class, 'login']); // Admin Login
 
+//Route::middleware(['auth:sanctum', CheckRole::class.':admin'])->group(function () {
 
 // Category API routes
 Route::prefix('categories')->group(function () {
