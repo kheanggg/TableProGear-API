@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Middleware\CheckRole;
+use App\Http\Controllers\Api\FavoriteController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -48,6 +49,7 @@ Route::prefix('products')->group(function () {
     Route::post('/', [ProductController::class, 'store']);
     Route::get('/{id}', [ProductController::class, 'show']);
     Route::get('/category/{category_id}', [ProductController::class, 'getByCategory']);
+    Route::get('/tag/{tagName}', [ProductController::class, 'getByTag']);
     Route::put('/{id}', [ProductController::class, 'update']);
     Route::patch('/{id}', [ProductController::class, 'update']);
     Route::delete('/{id}', [ProductController::class, 'destroy']);
@@ -56,3 +58,8 @@ Route::prefix('products')->group(function () {
     Route::post('/{id}/images', [ProductController::class, 'addImage']);
     Route::delete('/{product_id}/images/{image_id}', [ProductController::class, 'deleteImage']);
 });
+
+// Favorite API routes
+Route::get('/favorites', [FavoriteController::class, 'index']);
+Route::post('/favorites/add', [FavoriteController::class, 'add']);
+Route::delete('/favorites/remove', [FavoriteController::class, 'remove']);

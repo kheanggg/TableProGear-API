@@ -11,7 +11,16 @@ class CategoryController extends Controller
     // GET /api/categories
     public function index()
     {
-        $categories = Category::all();
+        // Get categories with products count
+        $categories = Category::withCount('products')->get();
+
+        // Rename 'products_count' to 'productsCount' for frontend consistency
+        $categories->transform(function ($category) {
+            $category->productsCount = $category->products_count;
+            unset($category->products_count); // optional
+            return $category;
+        });
+
         return response()->json($categories, 200);
     }
 
@@ -72,7 +81,6 @@ class CategoryController extends Controller
             return response()->json(['message' => 'Category not found'], 404);
         }
 
-        // Check if category has products
         if ($category->products->count() > 0) {
             return response()->json([
                 'message' => 'Cannot delete category because it has one or more products'
@@ -83,5 +91,6 @@ class CategoryController extends Controller
 
         return response()->json(['message' => 'Category deleted successfully'], 200);
     }
+
 
 }

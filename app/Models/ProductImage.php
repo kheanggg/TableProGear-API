@@ -9,6 +9,10 @@ class ProductImage extends Model
 {
     public $timestamps = false;
 
+    protected $casts = [
+        'is_featured' => 'boolean',
+    ];
+
     protected $fillable = [
         'product_id',
         'image_url',

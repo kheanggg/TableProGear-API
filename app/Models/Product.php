@@ -10,7 +10,8 @@ use App\Models\ProductImage;
 class Product extends Model
 {
     protected $primaryKey = 'product_id';
-    protected $fillable = ['name', 'description', 'price', 'category_id'];
+    protected $fillable = ['name', 'description', 'price', 'category_id', 'status', 'in_stock'];
+    
 
     public function category()
     {
@@ -32,5 +33,10 @@ class Product extends Model
     {
         return $this->hasOne(ProductImage::class, 'product_id', 'product_id')
                     ->where('is_featured', true);
+    }
+
+    public function favorites()
+    {
+        return $this->hasMany(Favorite::class, 'product_id', 'id');
     }
 }
