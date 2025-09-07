@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Middleware\CheckRole;
 use App\Http\Controllers\Api\FavoriteController;
+use App\Http\Controllers\Api\CartController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -60,6 +61,17 @@ Route::prefix('products')->group(function () {
 });
 
 // Favorite API routes
-Route::get('/favorites', [FavoriteController::class, 'index']);
-Route::post('/favorites/add', [FavoriteController::class, 'add']);
-Route::delete('/favorites/remove', [FavoriteController::class, 'remove']);
+Route::prefix('favorites')->group(function () {
+    Route::get('/', [FavoriteController::class, 'index']);
+    Route::post('/add', [FavoriteController::class, 'add']);
+    Route::delete('/remove', [FavoriteController::class, 'remove']);
+});
+
+// Cart API routes
+Route::prefix('cart')->group(function () {
+    Route::get('/', [CartController::class, 'index']);           // Get cart items
+    Route::post('/add', [CartController::class, 'add']);         // Add product
+    Route::post('/decrement/{id}', [CartController::class, 'decrement']);
+    Route::put('/update/{id}', [CartController::class, 'update']); // Update quantity
+    Route::delete('/remove/{id}', [CartController::class, 'remove']); // Remove product
+});
