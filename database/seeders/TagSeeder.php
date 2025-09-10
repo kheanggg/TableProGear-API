@@ -16,7 +16,6 @@ class TagSeeder extends Seeder
         $tags = [
             ['name' => 'New', 'description' => 'New Product'],
             ['name' => 'Hot', 'description' => 'Hot Prodcut'],
-            ['name' => 'Collection', 'description' => 'Collection Product'],
         ];
 
         DB::table('tags')->insert($tags);

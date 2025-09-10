@@ -16,7 +16,8 @@ class CategorySeeder extends Seeder
         $categories = [
             ['name' => 'Table', 'description' => 'It\'s a Table'],
             ['name' => 'Chair', 'description' => 'It\'s a Chair'],
-            ['name' => 'Accessories', 'description' => 'It\'s an Accessories'],
+            ['name' => 'Accessories', 'description' => 'Accessory items'],
+            ['name' => 'Collections', 'description' => 'Collection items'],
         ];
 
         DB::table('categories')->insert($categories);
