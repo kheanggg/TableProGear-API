@@ -11,68 +11,54 @@ class TelegramBotController extends Controller
 {
     public function webhook(Request $request)
     {
-        // Initialize Telegram API
+        // Get Telegram Bot API instance
+        $telegram = new Api(env('TELEGRAM_BOT_TOKEN'));
+
+        // Option 1: Use SDK getWebhookUpdates (works with real Telegram)
         try {
-            $telegram = new Api(env('TELEGRAM_BOT_TOKEN'));
+            $update = $telegram->getWebhookUpdates();
+            $message = $update->getMessage();
         } catch (\Exception $e) {
-            Log::error('Telegram API initialization failed: ' . $e->getMessage());
-            return response('ok', 200);
+            $message = null;
         }
 
-        $update = $request->all();
-        Log::info('Telegram update:', $update);
+        // Option 2: Fallback for Postman testing (access request JSON directly)
+        if (!$message) {
+            $message = $request->input('message');
+            if (!$message) {
+                return response('ok', 200);
+            }
+            $chatId = $message['chat']['id'] ?? null;
+            $text = $message['text'] ?? null;
+            $user = $message['from'] ?? null;
+        } else {
+            $chatId = $message->getChat()->getId();
+            $text = $message->getText();
+            $user = $message->getFrom();
+        }
 
-        $message = $update['message'] ?? null;
-        if (!$message) return response('ok', 200);
-
-        $chatId = $message['chat']['id'] ?? null;
-        $text   = $message['text'] ?? null;
-        $user   = $message['from'] ?? [];
+        // Log user info
+        Log::info('Telegram User Info:', [
+            'id' => $user['id'] ?? $user?->getId(),
+            'first_name' => $user['first_name'] ?? $user?->getFirstName(),
+            'last_name' => $user['last_name'] ?? $user?->getLastName(),
+            'username' => $user['username'] ?? $user?->getUsername(),
+            'language' => $user['language_code'] ?? $user?->getLanguageCode(),
+        ]);
 
         // Handle /start command
-        if ($text === '/start' && $chatId) {
-            $welcomeText = "Hello " . ($user['first_name'] ?? 'User') . "!\n";
-            $welcomeText .= "Telegram ID: " . ($user['id'] ?? 'N/A') . "\n";
-            $welcomeText .= "Username: @" . ($user['username'] ?? 'N/A');
-            $welcomeText .= ($user);
+        if ($text === '/start') {
+            $userInfoText = "Hello " . ($user['first_name'] ?? $user?->getFirstName()) . "!";
+            $userInfoText .= "\nTelegram ID: " . ($user['id'] ?? $user?->getId());
+            $userInfoText .= "\nUsername: @" . (($user['username'] ?? $user?->getUsername()) ?? 'N/A');
+            $userInfoText .= "\nLanguage: " . (($user['language_code'] ?? $user?->getLanguageCode()) ?? 'N/A');
 
-            // Keyboard button to request phone number
-            $keyboard = [
-                [
-                    ['text' => 'Share Phone Number', 'request_contact' => true]
-                ]
-            ];
-
-            $reply_markup = json_encode([
-                'keyboard' => $keyboard,
-                'one_time_keyboard' => true,
-                'resize_keyboard' => true
-            ]);
-
-            try {
+            // Send message back to user (only works with real Telegram chat IDs)
+            if ($chatId) {
                 $telegram->sendMessage([
                     'chat_id' => $chatId,
-                    'text' => $welcomeText . "\n\nPlease share your phone number:",
-                    'reply_markup' => $reply_markup
+                    'text' => $userInfoText
                 ]);
-            } catch (\Exception $e) {
-                Log::error('Failed to send message: ' . $e->getMessage());
-            }
-        }
-
-        // Handle shared contact
-        if (isset($message['contact'])) {
-            $phone = $message['contact']['phone_number'] ?? null;
-
-            if ($chatId && $phone) {
-                try {
-                    $telegram->sendMessage([
-                        'chat_id' => $chatId,
-                        'text' => "Thanks! We've received your phone number: $phone"
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error('Failed to send confirmation message: ' . $e->getMessage());
-                }
             }
         }
 
