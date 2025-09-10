@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Middleware\CheckRole;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\Api\TelegramBotController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -75,3 +76,5 @@ Route::prefix('cart')->group(function () {
     Route::put('/update/{id}', [CartController::class, 'update']); // Update quantity
     Route::delete('/remove/{id}', [CartController::class, 'remove']); // Remove product
 });
+
+Route::post('/telegram/webhook', [TelegramBotController::class, 'webhook']);
