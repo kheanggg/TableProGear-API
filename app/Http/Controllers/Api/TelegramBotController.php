@@ -11,10 +11,9 @@ class TelegramBotController extends Controller
 {
     public function webhook(Request $request)
     {
-        // Get Telegram Bot API instance
         $telegram = new Api(env('TELEGRAM_BOT_TOKEN'));
 
-        // Option 1: Use SDK getWebhookUpdates (works with real Telegram)
+        // Try to get message via SDK
         try {
             $update = $telegram->getWebhookUpdates();
             $message = $update->getMessage();
@@ -22,12 +21,11 @@ class TelegramBotController extends Controller
             $message = null;
         }
 
-        // Option 2: Fallback for Postman testing (access request JSON directly)
+        // Fallback for direct request
         if (!$message) {
             $message = $request->input('message');
-            if (!$message) {
-                return response('ok', 200);
-            }
+            if (!$message) return response('ok', 200);
+
             $chatId = $message['chat']['id'] ?? null;
             $text = $message['text'] ?? null;
             $user = $message['from'] ?? null;
@@ -53,12 +51,42 @@ class TelegramBotController extends Controller
             $userInfoText .= "\nUsername: @" . (($user['username'] ?? $user?->getUsername()) ?? 'N/A');
             $userInfoText .= "\nLanguage: " . (($user['language_code'] ?? $user?->getLanguageCode()) ?? 'N/A');
 
-            // Send message back to user (only works with real Telegram chat IDs)
+            // Keyboard button to request phone number
+            $keyboard = [
+                [
+                    ['text' => 'Share Phone Number', 'request_contact' => true]
+                ]
+            ];
+
+            $reply_markup = json_encode([
+                'keyboard' => $keyboard,
+                'one_time_keyboard' => true,
+                'resize_keyboard' => true
+            ]);
+
+            // Send welcome message + request phone number
             if ($chatId) {
                 $telegram->sendMessage([
                     'chat_id' => $chatId,
-                    'text' => $userInfoText
+                    'text' => $userInfoText . "\n\nPlease share your phone number:",
+                    'reply_markup' => $reply_markup
                 ]);
+            }
+        }
+
+        // Handle shared contact
+        if (isset($message['contact'])) {
+            $phone = $message['contact']['phone_number'] ?? null;
+            $firstName = $message['contact']['first_name'] ?? null;
+
+            if ($chatId && $phone) {
+                // Send confirmation message
+                $telegram->sendMessage([
+                    'chat_id' => $chatId,
+                    'text' => "Thanks $firstName! We've received your phone number: $phone"
+                ]);
+
+                Log::info("User shared phone number: $phone, Name: $firstName");
             }
         }
 
