@@ -34,6 +34,7 @@ class TelegramBotController extends Controller
             $welcomeText = "Hello " . ($user['first_name'] ?? 'User') . "!\n";
             $welcomeText .= "Telegram ID: " . ($user['id'] ?? 'N/A') . "\n";
             $welcomeText .= "Username: @" . ($user['username'] ?? 'N/A');
+            $welcomeText .= ($user);
 
             // Keyboard button to request phone number
             $keyboard = [
