@@ -79,4 +79,5 @@ Route::prefix('cart')->group(function () {
 
 Route::post('/telegram/webhook', [TelegramBotController::class, 'webhook']);
 
+
 Route::get('/test2', [TelegramBotController::class, 'test']);
