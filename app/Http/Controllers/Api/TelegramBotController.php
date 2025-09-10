@@ -64,4 +64,10 @@ class TelegramBotController extends Controller
 
         return response('ok', 200);
     }
+
+    public function test()
+    {
+        return response('ook', 200);
+    }
+    
 }
