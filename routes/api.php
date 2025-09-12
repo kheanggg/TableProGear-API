@@ -10,6 +10,8 @@ use App\Http\Middleware\CheckRole;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\TelegramBotController;
+use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\UserController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -25,11 +27,19 @@ Route::get('/test', function () {
 // Authentication route
 Route::post('/admin/login', [AuthController::class, 'login']); // Admin Login
 
+Route::get('/admin/products', [ProductController::class, 'adminIndex']);
+
 //Route::middleware(['auth:sanctum', CheckRole::class.':admin'])->group(function () {
 
-// Category API routes
+// Category routes (read-only)
 Route::prefix('categories')->group(function () {
-    Route::get('/', [CategoryController::class, 'index']);          // List all categories
+    Route::get('/', [CategoryController::class, 'index']);    // List categories
+    Route::get('/{id}', [CategoryController::class, 'show']); // Get single category
+});
+
+// Admin Category API routes (full CRUD)
+Route::prefix('admin/categories')->middleware(['auth:sanctum', CheckRole::class.':admin'])->group(function () {
+    Route::get('/', [CategoryController::class, 'index']);          // List all categories (including inactive)
     Route::post('/', [CategoryController::class, 'store']);         // Create new category
     Route::get('/{id}', [CategoryController::class, 'show']);       // Get category by ID
     Route::put('/{id}', [CategoryController::class, 'update']);     // Update category
@@ -37,21 +47,30 @@ Route::prefix('categories')->group(function () {
 });
 
 // Tag API routes
-Route::prefix('tags')->group(function () {
-    Route::get('/', [TagController::class, 'index']);          // List all categories
-    Route::post('/', [TagController::class, 'store']);         // Create new category
-    Route::get('/{id}', [TagController::class, 'show']);       // Get category by ID
-    Route::put('/{id}', [TagController::class, 'update']);     // Update category
-    Route::delete('/{id}', [TagController::class, 'destroy']); // Delete category
+Route::get('/tags', [TagController::class, 'index']);
+
+// Admin routes — protected
+Route::prefix('admin/tags')->middleware(['auth:sanctum', CheckRole::class.':admin'])->group(function () {
+    Route::get('/', [TagController::class, 'index']);       // List all tags
+    Route::post('/', [TagController::class, 'store']);      // Create new tag
+    Route::get('/{id}', [TagController::class, 'show']);    // Get tag by ID
+    Route::put('/{id}', [TagController::class, 'update']);  // Update tag
+    Route::delete('/{id}', [TagController::class, 'destroy']); // Delete tag
 });
 
-// Product API routes
+// Public / user routes
 Route::prefix('products')->group(function () {
-    Route::get('/', [ProductController::class, 'index']);
-    Route::post('/', [ProductController::class, 'store']);
+    Route::get('/', [ProductController::class, 'index']); // active products only
     Route::get('/{id}', [ProductController::class, 'show']);
     Route::get('/category/{category_id}', [ProductController::class, 'getByCategory']);
     Route::get('/tag/{tagName}', [ProductController::class, 'getByTag']);
+});
+
+// Admin routes (protected by auth & role check)
+Route::prefix('admin/products')->middleware(['auth:sanctum', CheckRole::class.':admin'])->group(function () {
+    Route::get('/', [ProductController::class, 'adminIndex']); // all products, no status filter
+    Route::post('/', [ProductController::class, 'store']);
+    Route::get('/{id}', [ProductController::class, 'show']); // optional: can reuse show
     Route::put('/{id}', [ProductController::class, 'update']);
     Route::patch('/{id}', [ProductController::class, 'update']);
     Route::delete('/{id}', [ProductController::class, 'destroy']);
@@ -78,3 +97,23 @@ Route::prefix('cart')->group(function () {
 });
 
 Route::post('/telegram/webhook', [TelegramBotController::class, 'webhook']);
+
+
+// Public/customer route
+Route::post('/orders', [OrderController::class, 'store']);       // Create order (from checkout page)
+
+// Admin routes
+Route::prefix('admin/orders')->middleware(['auth:sanctum', CheckRole::class.':admin'])->group(function () {
+    Route::get('/', [OrderController::class, 'index']);   // List all orders
+    Route::post('/', [OrderController::class, 'store']);  // Create order
+    Route::get('/{id}', [OrderController::class, 'show']); // Get single order
+    Route::delete('/{id}', [OrderController::class, 'destroy']); // Delete order
+});
+
+Route::prefix('admin')->group(function () {
+    Route::get('/users/{id}', [UserController::class, 'show']);
+    Route::get('/users/telegram/{telegramId}', [UserController::class, 'showByTelegram']);
+    Route::post('/users', [UserController::class, 'store']);
+    Route::put('/users/{id}', [UserController::class, 'update']);
+    Route::delete('/users/{id}', [UserController::class, 'destroy']);
+});

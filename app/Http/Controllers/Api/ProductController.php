@@ -31,7 +31,29 @@ class ProductController extends Controller
         return response()->json($products);
     }
 
-    // GET /api/products/{id}
+    // GET /api/admin/products
+    public function adminIndex()
+    {
+        $user = auth()->user();
+        if (!$user || $user->role !== 'admin') {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        // Get favorite product IDs (optional, depends on admin usage)
+        $favoriteIds = Favorite::where('user_id', $user->id)->pluck('product_id')->toArray();
+
+        // Get all products, no status filter
+        $products = Product::with(['images', 'tags', 'category'])
+            ->get()
+            ->map(function ($product) use ($favoriteIds) {
+                $product->is_favorite = in_array($product->id, $favoriteIds);
+                return $product;
+            });
+
+        return response()->json($products);
+    }
+
+    // GET /api/admin/products/{id}
     public function show($id)
     {
         $product = Product::with(['category', 'tags', 'images'])->find($id);
@@ -239,13 +261,26 @@ class ProductController extends Controller
             return response()->json(['message' => 'Category not found'], 200);
         }
 
-        // Get all products for this category
-        $products = \App\Models\Product::where('category_id', $category_id)
-                                        ->with('category') // optional, eager load category
-                                        ->get();
+        // Check if 'active' query parameter exists
+        $activeOnly = request()->query('active', null); // null if not present
+
+        $productsQuery = Product::where('category_id', $category_id)
+                                            ->with('category', 'images'); // eager load category & images
+
+        // Apply 'active' filter only if query param is set
+        if ($activeOnly) {
+            $productsQuery->where('status', 1);
+        }
+
+        $products = $productsQuery->get();
+
+        if ($products->isEmpty()) {
+            return response()->json(['message' => 'No products found in this category'], 200);
+        }
 
         return response()->json($products, 200);
     }
+
 
     // GET /api/products/tag/{tagName}
     public function getByTag($tagName)

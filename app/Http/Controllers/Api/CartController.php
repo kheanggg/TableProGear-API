@@ -9,14 +9,18 @@ use App\Models\Product;
 
 class CartController extends Controller
 {
-    // List all cart items for user_id = 1
-    public function index()
+    // List all cart items for a given user
+    public function index(Request $request)
     {
-        $userId = 1; // hardcoded for testing
+        $userId = $request->query('user_id'); // get user_id from query
+        if (!$userId) {
+            return response()->json(['message' => 'User ID is required'], 400);
+        }
+
         $cartItems = Cart::with(['product', 'product.images' => function($q) {
                 $q->orderBy('sort_order', 'asc');
             }])
-            ->where('user_id', 1)
+            ->where('user_id', $userId)
             ->get();
 
         return response()->json($cartItems, 200);
@@ -26,11 +30,12 @@ class CartController extends Controller
     public function add(Request $request)
     {
         $request->validate([
+            'user_id' => 'required|integer|exists:users,id', // <-- added
             'product_id' => 'required|integer|exists:products,product_id',
             'quantity' => 'sometimes|integer|min:1',
         ]);
 
-        $userId = 1; // hardcoded for testing
+        $userId = $request->user_id;
 
         $cartItem = Cart::firstOrCreate(
             ['user_id' => $userId, 'product_id' => $request->product_id],
@@ -45,7 +50,7 @@ class CartController extends Controller
         return response()->json(['message' => 'Product added to cart', 'cart' => $cartItem], 200);
     }
 
-    public function decrement($id)
+    public function decrement(Request $request, $id)
     {
         $cartItem = Cart::findOrFail($id);
 
@@ -57,7 +62,6 @@ class CartController extends Controller
 
         return response()->json(['message' => 'Cart updated', 'cart' => $cartItem], 200);
     }
-
 
     // Update quantity
     public function update(Request $request, $id)
