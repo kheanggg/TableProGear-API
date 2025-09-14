@@ -9,15 +9,15 @@ use App\Models\User;
 class UserController extends Controller
 {
     // GET /admin/users/{id}
-    public function show($id)
+    public function me(Request $request)
     {
-        $user = User::find($id);
+        $user = $request->user(); // gets user from Sanctum token
 
         if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
+            return response()->json(['message' => 'Invalid token'], 401);
         }
 
-        return response()->json($user);
+        return response()->json($user, 200);
     }
 
     // GET /admin/users/telegram/{telegramId}

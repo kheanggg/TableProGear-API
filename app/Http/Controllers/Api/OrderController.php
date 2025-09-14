@@ -5,82 +5,93 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Order;
-use App\Models\OrderItem;
-use Illuminate\Support\Facades\DB;
 use App\Models\Cart;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
     /**
-     * List all orders (optional: for admin)
+     * List all orders (admin only or authenticated user)
      */
     public function index(Request $request)
     {
-        $lastId = $request->query('last_id', 0);   // optional filter
-        $limit  = $request->query('limit', 10);    // default 10 orders
+        $user = $request->user(); // get authenticated user
+        if (!$user) {
+            return response()->json(['message' => 'Invalid token'], 401);
+        }
+
+        $lastId = $request->query('last_id', 0);
+        $limit  = $request->query('limit', 10);
 
         $orders = Order::with('items.product', 'customer')
-            ->when($lastId > 0, function ($q) use ($lastId) {
-                // since we're ordering DESC, fetch older orders
-                $q->where('order_id', '<', $lastId);
-            })
+            ->when($lastId > 0, fn($q) => $q->where('order_id', '<', $lastId))
+            ->when(!$user->is_admin, fn($q) => $q->where('customer_id', $user->id))
             ->orderBy('order_id', 'desc')
             ->take($limit)
             ->get();
 
-        return response()->json($orders);
+        return response()->json($orders, 200);
     }
 
     /**
      * Show a single order by ID
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $order = Order::with('items.product', 'customer')->find($id);
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Invalid token'], 401);
+        }
 
+        $order = Order::with('items.product', 'customer')->find($id);
         if (!$order) {
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        return response()->json($order);
+        // Only admin or owner can view
+        if (!$user->is_admin && $order->customer_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        return response()->json($order, 200);
     }
 
     /**
-     * Create a new order with items
+     * Create a new order for the authenticated user
      */
     public function store(Request $request)
     {
-        // validate request
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Invalid token'], 401);
+        }
+
         $request->validate([
-            'customer_id' => 'required|exists:users,id',
             'contact_name' => 'required|string',
             'phone_number' => 'required|string',
             'address' => 'required|string',
             'note' => 'nullable|string',
-            'subtotal' => 'required|numeric',
-            'total' => 'required|numeric',
+            'subtotal' => 'required|numeric|min:0',
+            'total' => 'required|numeric|min:0',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,product_id', // or 'id' if your DB column is id
+            'items.*.product_id' => 'required|exists:products,product_id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
         ]);
 
         DB::beginTransaction();
-
         try {
-            // Create the order (set order_date automatically)
             $order = Order::create([
-                'customer_id' => $request->customer_id,
+                'customer_id' => $user->id,
                 'contact_name' => $request->contact_name,
                 'phone_number' => $request->phone_number,
                 'address' => $request->address,
                 'note' => $request->note,
-                'order_date' => now(), // automatically set current date/time
+                'order_date' => now(),
                 'subtotal' => $request->subtotal,
                 'total' => $request->total,
             ]);
 
-            // Create order items
             foreach ($request->items as $item) {
                 $order->items()->create([
                     'product_id' => $item['product_id'],
@@ -90,13 +101,13 @@ class OrderController extends Controller
             }
 
             // Clear the user's cart
-            Cart::where('user_id', $request->customer_id)->delete();
+            Cart::where('user_id', $user->id)->delete();
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Order created successfully',
-                'order' => $order->load('items')
+                'order' => $order->load('items.product')
             ], 201);
 
         } catch (\Exception $e) {
@@ -108,18 +119,28 @@ class OrderController extends Controller
         }
     }
 
-    public function destroy($id)
+    /**
+     * Delete an order
+     */
+    public function destroy(Request $request, $id)
     {
-        $order = Order::where('order_id', $id)->first();
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Invalid token'], 401);
+        }
 
+        $order = Order::find($id);
         if (!$order) {
             return response()->json(['message' => 'Order not found'], 404);
         }
 
+        // Only admin or owner can delete
+        if (!$user->is_admin && $order->customer_id !== $user->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $order->delete();
 
-        return response()->json(['message' => 'Order deleted successfully']);
+        return response()->json(['message' => 'Order deleted successfully'], 200);
     }
-
-
 }

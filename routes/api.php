@@ -81,14 +81,14 @@ Route::prefix('admin/products')->middleware(['auth:sanctum', CheckRole::class.':
 });
 
 // Favorite API routes
-Route::prefix('favorites')->group(function () {
+Route::prefix('favorites')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [FavoriteController::class, 'index']);
     Route::post('/add', [FavoriteController::class, 'add']);
     Route::delete('/remove', [FavoriteController::class, 'remove']);
 });
 
 // Cart API routes
-Route::prefix('cart')->group(function () {
+Route::prefix('cart')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [CartController::class, 'index']);           // Get cart items
     Route::post('/add', [CartController::class, 'add']);         // Add product
     Route::post('/decrement/{id}', [CartController::class, 'decrement']);
@@ -97,21 +97,21 @@ Route::prefix('cart')->group(function () {
 });
 
 Route::post('/telegram/webhook', [TelegramBotController::class, 'webhook']);
-
+Route::post('/telegram/getuser', [TelegramBotController::class, 'getUser']);
 
 // Public/customer route
-Route::post('/orders', [OrderController::class, 'store']);       // Create order (from checkout page)
+Route::middleware(['auth:sanctum'])->post('/orders', [OrderController::class, 'store']);       // Create order (from checkout page)
 
 // Admin routes
 Route::prefix('admin/orders')->middleware(['auth:sanctum', CheckRole::class.':admin'])->group(function () {
     Route::get('/', [OrderController::class, 'index']);   // List all orders
-    Route::post('/', [OrderController::class, 'store']);  // Create order
     Route::get('/{id}', [OrderController::class, 'show']); // Get single order
     Route::delete('/{id}', [OrderController::class, 'destroy']); // Delete order
 });
 
+Route::middleware(['auth:sanctum'])->get('/user', [UserController::class, 'me']);
+
 Route::prefix('admin')->group(function () {
-    Route::get('/users/{id}', [UserController::class, 'show']);
     Route::get('/users/telegram/{telegramId}', [UserController::class, 'showByTelegram']);
     Route::post('/users', [UserController::class, 'store']);
     Route::put('/users/{id}', [UserController::class, 'update']);

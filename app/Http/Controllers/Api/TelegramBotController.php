@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Telegram\Bot\Api;
 use Illuminate\Support\Facades\Log;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 class TelegramBotController extends Controller
 {
@@ -91,5 +93,38 @@ class TelegramBotController extends Controller
         }
 
         return response('ok', 200);
+    }
+
+    public function getUser(Request $request)
+    {
+        $update = $request->all();
+        $from   = $update['message']['from'] ?? null;
+
+        if ($from) {
+            // Create or update Telegram user
+            $user = User::updateOrCreate(
+                ['telegram_id' => $from['id']],
+                [
+                    'username'   => $from['username'] ?? null,
+                    'first_name' => $from['first_name'] ?? null,
+                    'last_name'  => $from['last_name'] ?? null,
+                    'role'       => 'telegram',
+                ]
+            );
+
+            // Create Sanctum token
+            $token = $user->createToken('telegram')->plainTextToken;
+
+            // Log the user in (optional if using Sanctum)
+            Auth::login($user);
+
+            return response()->json([
+                'status' => 'ok',
+                'user'   => $user,
+                'token'  => $token,
+            ]);
+        }
+
+        return response()->json(['status' => 'no user found'], 200);
     }
 }

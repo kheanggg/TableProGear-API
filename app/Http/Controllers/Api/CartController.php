@@ -9,19 +9,18 @@ use App\Models\Product;
 
 class CartController extends Controller
 {
-    // List all cart items for a given user
+    // List all cart items for authenticated user
     public function index(Request $request)
     {
-        $userId = $request->query('user_id'); // get user_id from query
-        if (!$userId) {
-            return response()->json(['message' => 'User ID is required'], 400);
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['message' => 'Invalid token'], 401);
         }
 
-        $cartItems = Cart::with(['product', 'product.images' => function($q) {
-                $q->orderBy('sort_order', 'asc');
-            }])
-            ->where('user_id', $userId)
-            ->get();
+        $cartItems = Cart::with(['product', 'product.images' => function ($q) {
+            $q->orderBy('sort_order', 'asc');
+        }])->where('user_id', $user->id)->get();
 
         return response()->json($cartItems, 200);
     }
@@ -29,16 +28,18 @@ class CartController extends Controller
     // Add a product to the cart
     public function add(Request $request)
     {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Invalid token'], 401);
+        }
+
         $request->validate([
-            'user_id' => 'required|integer|exists:users,id', // <-- added
             'product_id' => 'required|integer|exists:products,product_id',
             'quantity' => 'sometimes|integer|min:1',
         ]);
 
-        $userId = $request->user_id;
-
         $cartItem = Cart::firstOrCreate(
-            ['user_id' => $userId, 'product_id' => $request->product_id],
+            ['user_id' => $user->id, 'product_id' => $request->product_id],
             ['quantity' => $request->quantity ?? 1]
         );
 
@@ -47,12 +48,21 @@ class CartController extends Controller
             $cartItem->increment('quantity', $request->quantity ?? 1);
         }
 
-        return response()->json(['message' => 'Product added to cart', 'cart' => $cartItem], 200);
+        return response()->json([
+            'message' => 'Product added to cart',
+            'cart' => $cartItem
+        ], 200);
     }
 
+    // Decrement product quantity or remove if 1
     public function decrement(Request $request, $id)
     {
-        $cartItem = Cart::findOrFail($id);
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Invalid token'], 401);
+        }
+
+        $cartItem = Cart::where('id', $id)->where('user_id', $user->id)->firstOrFail();
 
         if ($cartItem->quantity > 1) {
             $cartItem->decrement('quantity', 1);
@@ -66,20 +76,30 @@ class CartController extends Controller
     // Update quantity
     public function update(Request $request, $id)
     {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Invalid token'], 401);
+        }
+
         $request->validate([
             'quantity' => 'required|integer|min:1',
         ]);
 
-        $cartItem = Cart::findOrFail($id);
+        $cartItem = Cart::where('id', $id)->where('user_id', $user->id)->firstOrFail();
         $cartItem->update(['quantity' => $request->quantity]);
 
         return response()->json(['message' => 'Cart updated', 'cart' => $cartItem], 200);
     }
 
     // Remove item from cart
-    public function remove($id)
+    public function remove(Request $request, $id)
     {
-        $cartItem = Cart::findOrFail($id);
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Invalid token'], 401);
+        }
+
+        $cartItem = Cart::where('id', $id)->where('user_id', $user->id)->firstOrFail();
         $cartItem->delete();
 
         return response()->json(['message' => 'Item removed from cart'], 200);
