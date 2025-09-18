@@ -13,7 +13,7 @@ class TelegramBotController extends Controller
 {
     public function webhook(Request $request)
     {
-        $telegram = new Api(env('TELEGRAM_BOT_TOKEN'));
+        $telegram = new Api(env('TELEGRAM_BOT_TOKEN_USER'));
 
         // Try to get message via SDK
         try {

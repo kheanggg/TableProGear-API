@@ -10,6 +10,7 @@ use App\Http\Middleware\CheckRole;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\TelegramBotController;
+use App\Http\Controllers\Api\TelegramUserController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\UserController;
 
@@ -97,7 +98,7 @@ Route::prefix('cart')->middleware('auth:sanctum')->group(function () {
 });
 
 Route::post('/telegram/webhook', [TelegramBotController::class, 'webhook']);
-Route::post('/telegram/getuser', [TelegramBotController::class, 'getUser']);
+Route::post('/telegram-user', [TelegramUserController::class, 'storeOrLogin']);
 
 // Public/customer route
 Route::middleware(['auth:sanctum'])->post('/orders', [OrderController::class, 'store']);       // Create order (from checkout page)

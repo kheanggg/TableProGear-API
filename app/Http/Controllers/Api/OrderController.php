@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\Cart;
+use Telegram\Bot\Api;
 use Illuminate\Support\Facades\DB;
+use Telegram\Bot\Laravel\Facades\Telegram;
+use Telegram\Bot\Keyboard\Keyboard;
 
 class OrderController extends Controller
 {
@@ -20,12 +23,11 @@ class OrderController extends Controller
             return response()->json(['message' => 'Invalid token'], 401);
         }
 
-        $lastId = $request->query('last_id', 0);
-        $limit  = $request->query('limit', 10);
+        $lastId = $request->query('last_id');
+        $limit  = $request->query('limit');
 
         $orders = Order::with('items.product', 'customer')
             ->when($lastId > 0, fn($q) => $q->where('order_id', '<', $lastId))
-            ->when(!$user->is_admin, fn($q) => $q->where('customer_id', $user->id))
             ->orderBy('order_id', 'desc')
             ->take($limit)
             ->get();
@@ -49,7 +51,7 @@ class OrderController extends Controller
         }
 
         // Only admin or owner can view
-        if (!$user->is_admin && $order->customer_id !== $user->id) {
+        if ($user->role !== 'admin') {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -100,11 +102,57 @@ class OrderController extends Controller
                 ]);
             }
 
-            // Clear the user's cart
-            Cart::where('user_id', $user->id)->delete();
+            // --- Send Telegram messages ---
+            // Bot 1: User notifications
+            $botUser = new Api(env('TELEGRAM_BOT_TOKEN_USER'));
+            $itemsText = '';
+            foreach ($order->items as $item) {
+                $itemsText .= "- {$item->product->name} x {$item->quantity} (Price: {$item->price}$)\n";
+            }
+
+            $botUser->sendMessage([
+                'chat_id' => $user->telegram_id,
+                'text' => "✅ Your order #{$order->order_id} has been placed!\n\n"
+                        . "Items:\n{$itemsText}\n"
+                        . "Total: {$order->total}$"
+            ]);
+
+            // Bot 2: Admin notifications
+            // Prepare item list as text
+            // Prepare item list
+            $itemList = '';
+            foreach ($order->items as $item) {
+                $itemList .= "- {$item->product->name} x {$item->quantity}\n";
+            }
+
+            // Create Keyboard instance
+            $keyboard = new Keyboard();
+            $inlineKeyboard = $keyboard->inline()
+                ->row([
+                    $keyboard->inlineButton([
+                        'text' => "Chat with Buyer",
+                        'url' => "https://t.me/{$user->username}"
+                    ])
+                ]);
+
+            // Bot 2: Admin notifications
+            $botAdmin = new Api(env('TELEGRAM_BOT_TOKEN_ADMIN'));
+            $botAdmin->sendMessage([
+                'chat_id' => env('ADMIN_TELEGRAM_ID'),
+                'text' => "📦 New order #{$order->order_id} placed by {$user->first_name} {$user->last_name}\n\n"
+                        . "📱 Phone: {$order->phone_number}\n"
+                        . "🏠 Address: {$order->address}\n\n"
+                        . "📝 Note: " . ($order->note ?: "None") . "\n\n"
+                        . "🛒 Items:\n{$itemList}\n"
+                        . "💰 Total: {$order->total}$",
+                'reply_markup' => $inlineKeyboard
+            ]);
+
 
             DB::commit();
-
+            
+            Cart::where('user_id', $user->id)->delete();
+            
             return response()->json([
                 'message' => 'Order created successfully',
                 'order' => $order->load('items.product')
