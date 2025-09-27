@@ -13,6 +13,9 @@ use App\Http\Controllers\Api\TelegramBotController;
 use App\Http\Controllers\Api\TelegramUserController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\UploadController;
+
+Route::post('/upload', [UploadController::class, 'store']);
 
 Route::get('/user', function (Request $request) {
     return $request->user();
